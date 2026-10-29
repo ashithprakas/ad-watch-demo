@@ -1,0 +1,116 @@
+<main class="page">
+  <header class="top">
+    <h1>Ad Watch</h1>
+    <span class="meta">
+      @if (file(); as f) {
+        Google ads · {{ f.region }} · {{ f.fetched }} · {{ f.brands.length }} brands
+      }
+    </span>
+    <button type="button" class="theme-btn" (click)="toggleTheme()" [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' theme'">
+      {{ theme() === 'dark' ? 'Light theme' : 'Dark theme' }}
+    </button>
+  </header>
+
+  <p class="summary" aria-live="polite">{{ error() || summary() }}</p>
+  <p class="note">
+    One snapshot of Google's public Ads Transparency Center. Each ad links to Google's own page; no ad images or video are copied here.
+  </p>
+
+  @if (stress()) {
+    <p class="warn" role="status">
+      Stress test is on: the table and charts include synthetic rows, so the counts are not real. Turn it off to see the real data.
+    </p>
+  }
+
+  @if (file(); as f) {
+    <section class="filters" aria-label="Filters">
+      <details class="menu">
+        <summary>{{ brandLabel() }} ▾</summary>
+        <div class="panel">
+          @for (b of brandOrder(); track b.i) {
+            <label>
+              <input type="checkbox" [checked]="filters().brands.has(b.i)" (change)="toggleBrand(b.i)" />
+              {{ b.n }}
+            </label>
+          }
+          <button type="button" class="linkbtn" (click)="patch({ brands: emptySet })">Clear brands</button>
+        </div>
+      </details>
+
+      <span class="group" role="group" aria-label="Format">
+        <span class="chips">
+          @for (f of f.formats; track f) {
+            <button type="button" class="chip" [attr.aria-pressed]="filters().formats.has($index)" (click)="toggleFormat($index)">
+              <i class="swatch s{{ $index }}"></i>{{ labels[$index] }}
+            </button>
+          }
+        </span>
+      </span>
+
+      <label>
+        First shown
+        <select #since (change)="setSince(since.value)" [value]="filters().sinceDays === null ? 'all' : '' + filters().sinceDays">
+          <option value="all">any time</option>
+          <option value="365">last 12 months</option>
+          <option value="90">last 90 days</option>
+        </select>
+      </label>
+
+      <label>
+        <input type="checkbox" [checked]="filters().newOnly" (change)="patch({ newOnly: !filters().newOnly })" />
+        New in last {{ f.windowDays }} days
+      </label>
+
+      <label>
+        Search
+        <input #q type="search" placeholder="Brand or ad ID" [value]="filters().search" (input)="patch({ search: q.value })" />
+      </label>
+
+      @if (isFiltered()) {
+        <button type="button" class="linkbtn" (click)="clear()">Clear filters</button>
+      }
+    </section>
+
+    <section class="charts" aria-label="Charts">
+      <div>
+        <h2>Ads per brand, by format</h2>
+        <app-brand-bars
+          [rows]="rows()"
+          [names]="names()"
+          [formats]="f.formats"
+          [selected]="filters().brands"
+          (brandClick)="focusBrand($event)"
+        />
+        <p class="chartnote">Click a brand to filter the table and the weekly chart.</p>
+      </div>
+      <div>
+        <h2>New ads started per week</h2>
+        <app-weekly-line [weeks]="weeks()" />
+      </div>
+    </section>
+
+    <section class="tablesec" aria-label="Ads">
+      <div class="tablehead">
+        <h2>Ads ({{ shown().length.toLocaleString('en-US') }})</h2>
+        <div class="tools">
+          <label>
+            <input type="checkbox" [checked]="stress()" (change)="stress.set(!stress())" />
+            Stress test: pad to {{ stressRows.toLocaleString('en-US') }} synthetic rows
+          </label>
+          <button type="button" class="linkbtn" (click)="exportCsv()">Export CSV</button>
+        </div>
+      </div>
+      @if (shown().length === 0) {
+        <p class="empty">No ads match these filters. <button type="button" class="linkbtn" (click)="clear()">Clear filters</button></p>
+      }
+      <app-ads-grid [ads]="shown()" [names]="names()" />
+    </section>
+  } @else if (!error()) {
+    <p class="empty">Loading ads…</p>
+  }
+
+  <footer class="foot">
+    Demo built with Angular and TypeScript from public data. Brand names are used only to label data. Counts reflect what
+    Google's Transparency Center showed on the snapshot date; they are not a complete record of any brand's advertising.
+  </footer>
+</main>
